@@ -28,3 +28,7 @@ const authMiddelware = (req,res,next)=>{
         return res.status(403).json({});
     }
 };
+
+module.exports ={
+    authMiddelware
+}
