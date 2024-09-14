@@ -1,5 +1,5 @@
 const express = require('express');
-
+const {authMiddelware}  = require ('../middleware');
 const router = express.Router();
 const zod = require("zod");
 const { User } = require("../db");
@@ -84,4 +84,47 @@ router.post("/signin", async (req, res) => {
     })
 })
 
+const updateBody = zod.object({
+    password : zod.string().optional(),
+    firstName : zod.string().optional(),
+    lastName : zod.string().optional()
+})
+router.post('/',authMiddelware , async(req,res) => {
+   const {success} = updateBody.safeParse(req.body);
+   if(!success){
+    res.status(411).json({
+        message : "Erro while updating information",
+    });
+   }
+  
+   await User.updateOne({_id : req.userId},req.body);
+
+   res.status(200).json({
+    message : "Update Successfully !",
+   });
+})
+router.get("/bulk", async (req, res) => {
+    const filter = req.query.filter || "";
+
+    const users = await User.find({
+        $or: [{
+            firstName: {
+                "$regex": filter
+            }
+        }, {
+            lastName: {
+                "$regex": filter
+            }
+        }]
+    })
+
+    res.json({
+        user: users.map(user => ({
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            _id: user._id
+        }))
+    })
+})
 module.exports = router;
