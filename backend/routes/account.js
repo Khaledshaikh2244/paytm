@@ -20,7 +20,9 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     const session = await mongoose.startSession();
 
     session.startTransaction();
-    const { amount, to } = req.body;
+    
+    try {
+        const { amount, to } = req.body;
 
     const account = await Account.findOne({ userId: req.userId }).session(session);
 
@@ -31,6 +33,19 @@ router.post("/transfer", authMiddleware, async (req, res) => {
         });
     }
 
+    if(typeof amount !== 'number' ||  amount <= 0){
+        await session.abortTransaction();
+        return res.status(400).json({
+            message : "Amount should be a Number"
+        });
+    }
+
+   if(account.balance == null || typeof account.balance != 'number' ){
+    await session.abortTransaction();
+	   return res.status(400).json({
+	message : "Balance should  be valid number"
+    })
+   }		
     const toAccount = await Account.findOne({ userId: to }).session(session);
 
     if (!toAccount) {
@@ -49,6 +64,19 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     res.json({
         message: "Transfer successful"
     });
+    } catch (error) {
+        console.error(error);
+        await session.abortTransaction();
+
+        if(error instanceof mongoose.MongoServerError && error.code === 14 ){
+            return res.status(400).json({
+                message  : "Balanace should be a valid number"
+            })
+        }
+        else{
+            return res.status(500).json({message : "Internal Server error"});
+        }
+    }
 });
 
 module.exports = router;
